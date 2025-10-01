@@ -1,0 +1,85 @@
+# Action metadata
+name: 'Build Secure Docker Image'
+description: 'Build a Docker image and scan it with Dockle for security best practices'
+author: 'Pribal'
+branding:
+  icon: lock
+  color: blue
+
+# Action inputs
+inputs:
+  tag:
+    description: 'Docker image name and tag in "name:tag" format'
+    required: true
+  path:
+    description: 'Directory where the Docker build command should run (default ".")'
+    required: false
+    default: "."
+  dockerfile:
+    description: 'Path to the Dockerfile relative to the "path" input (default "Dockerfile")'
+    required: false
+    default: Dockerfile
+  docker-build-command:
+    description: 'Custom command to build the Docker image (default: docker build -f <dockerfile> -t <tag> <path>)'
+    required: false
+
+  # Dockle Inputs
+  dockle-version:
+    description: 'Dockle version to use (default: latest release)'
+    required: false
+  dockle-exit-code:
+    description: 'Exit code returned by Dockle when WARN or FATAL issues are found (default: 1)'
+    required: false
+    default: 1
+  dockle-exit-level:
+    description: 'Dockle exit level threshold (INFO, WARN, or FATAL). (default: WARN)'
+    required: false
+    default: WARN
+
+# Action steps
+runs:
+  using: "composite"
+  steps:
+    # Build Docker Image
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker Image
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.docker-build-command }}" ]; then
+          eval "${{ inputs.docker-build-command }}"
+        else
+          docker build -f "${{ inputs.dockerfile }}" -t "${{ inputs.tag }}" "${{ inputs.path }}"
+        fi
+
+    # Get Dockle version
+    - name: Resolve Dockle version
+      id: dockle-version
+      shell: bash
+      run: |
+        if ! command -v jq &> /dev/null; then
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+        fi
+
+        if [ -n "${{ inputs.dockle-version }}" ]; then
+          echo "DOCKLE_VERSION=${{ inputs.dockle-version }}" >> $GITHUB_ENV
+        else
+          release_name=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | jq -r '.name')
+          echo "DOCKLE_VERSION=$release_name" >> $GITHUB_ENV
+        fi
+
+    # Scan image with dockle
+    - name: Scan Docker image with Dockle
+      shell: bash
+      run: |
+        curl -sL "https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz" -o /tmp/dockle.tar.gz
+        tar zxf /tmp/dockle.tar.gz -C /tmp
+        sudo mv /tmp/dockle /usr/local/bin/
+
+        dockle --exit-code "${DOCKLE_EXIT_CODE}" --exit-level "${DOCKLE_EXIT_LEVEL}" "${IMAGE}"
+      env:
+        IMAGE: "${{ inputs.tag }}"
+        DOCKLE_EXIT_LEVEL: "${{ inputs.dockle-exit-level }}"
+        DOCKLE_EXIT_CODE: "${{ inputs.dockle-exit-code }}"

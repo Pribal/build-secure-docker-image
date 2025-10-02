@@ -1,0 +1,16 @@
+name: Test Secure Docker Image
+
+on: [push]
+
+jobs:
+  secure-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run secure Dockle action
+        uses: ./
+        with:
+          tag: "secure-test-image:1.0.0"
+          path: ./test-secure
+          dockerfile: ./test-secure/Dockerfile

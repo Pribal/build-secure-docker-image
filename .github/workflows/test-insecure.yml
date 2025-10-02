@@ -1,0 +1,16 @@
+name: Test Insecure Docker Image
+
+on: [push]
+
+jobs:
+  insecure-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run insecure Dockle action
+        uses: ./
+        with:
+          tag: "insecure-test-image:latest"
+          path: ./test-insecure
+          dockerfile: ./test-insecure/Dockerfile

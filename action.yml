@@ -1,7 +1,7 @@
 # Action metadata
-name: 'Build Secure Docker Image'
-description: 'Build a Docker image and scan it with Dockle for security best practices'
-author: 'Pribal'
+name: "Build Secure Docker Image"
+description: "Build a Docker image and scan it with Dockle for security best practices"
+author: "Pribal"
 branding:
   icon: lock
   color: blue
@@ -20,19 +20,19 @@ inputs:
     required: false
     default: Dockerfile
   docker-build-command:
-    description: 'Custom command to build the Docker image (default: docker build -f <dockerfile> -t <tag> <path>)'
+    description: 'Custom command to build the Docker image (default: "docker build -f <dockerfile> -t <tag> <path>"")'
     required: false
 
   # Dockle Inputs
   dockle-version:
-    description: 'Dockle version to use (default: latest release)'
+    description: "Dockle version to use (default: latest release)"
     required: false
   dockle-exit-code:
-    description: 'Exit code returned by Dockle when WARN or FATAL issues are found (default: 1)'
+    description: "Exit code returned by Dockle when WARN or FATAL issues are found (default: 1)"
     required: false
-    default: 1
+    default: "1"
   dockle-exit-level:
-    description: 'Dockle exit level threshold (INFO, WARN, or FATAL). (default: WARN)'
+    description: "Dockle exit level threshold (INFO, WARN, or FATAL). (default: WARN)"
     required: false
     default: WARN
 
@@ -47,38 +47,60 @@ runs:
     - name: Build Docker Image
       shell: bash
       run: |
+        echo "::group::Building Docker Image"
         if [ -n "${{ inputs.docker-build-command }}" ]; then
+          echo "Using custom build command: ${{ inputs.docker-build-command }}"
           eval "${{ inputs.docker-build-command }}"
         else
+          echo "Running: docker build -f '${{ inputs.dockerfile }}' -t '${{ inputs.tag }}' '${{ inputs.path }}'"
           docker build -f "${{ inputs.dockerfile }}" -t "${{ inputs.tag }}" "${{ inputs.path }}"
         fi
+        echo "::endgroup::"
 
     # Get Dockle version
     - name: Resolve Dockle version
       id: dockle-version
       shell: bash
       run: |
+        echo "::group::Resolving Dockle version"
         if ! command -v jq &> /dev/null; then
+          echo "jq not found, installing..."
           sudo apt-get update -y
           sudo apt-get install -y jq
         fi
 
         if [ -n "${{ inputs.dockle-version }}" ]; then
+          echo "Using provided Dockle version: ${{ inputs.dockle-version }}"
           echo "DOCKLE_VERSION=${{ inputs.dockle-version }}" >> $GITHUB_ENV
         else
-          release_name=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | jq -r '.name')
-          echo "DOCKLE_VERSION=$release_name" >> $GITHUB_ENV
+          release_tag=$(curl -s https://api.github.com/repos/goodwithtech/dockle/releases/latest | jq -r '.tag_name')
+          echo "Latest release tag: $release_tag"
+          echo "DOCKLE_VERSION=${release_tag#v}" >> $GITHUB_ENV
         fi
+        echo "::endgroup::"
 
     # Scan image with dockle
     - name: Scan Docker image with Dockle
       shell: bash
       run: |
+        echo "::group::Downloading Dockle"
+        echo "Downloading: https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz"
         curl -sL "https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz" -o /tmp/dockle.tar.gz
-        tar zxf /tmp/dockle.tar.gz -C /tmp
-        sudo mv /tmp/dockle /usr/local/bin/
 
+        echo "Downloaded file info:"
+        file /tmp/dockle.tar.gz || true
+        ls -lh /tmp/dockle.tar.gz || true
+        echo "::endgroup::"
+
+        echo "::group::Extracting Dockle"
+        tar zxf /tmp/dockle.tar.gz -C /tmp || { echo "❌ Extraction failed"; exit 1; }
+        sudo mv /tmp/dockle /usr/local/bin/
+        dockle --version || echo "Dockle not installed correctly"
+        echo "::endgroup::"
+
+        echo "::group::Running Dockle Scan"
         dockle --exit-code "${DOCKLE_EXIT_CODE}" --exit-level "${DOCKLE_EXIT_LEVEL}" "${IMAGE}"
+        echo "::endgroup::"
       env:
         IMAGE: "${{ inputs.tag }}"
         DOCKLE_EXIT_LEVEL: "${{ inputs.dockle-exit-level }}"

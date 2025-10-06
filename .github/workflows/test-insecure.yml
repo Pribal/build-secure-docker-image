@@ -1,6 +1,6 @@
 name: Test Insecure Docker Image
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   insecure-test:

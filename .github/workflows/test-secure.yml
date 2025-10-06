@@ -1,6 +1,6 @@
 name: Test Secure Docker Image
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   secure-test:

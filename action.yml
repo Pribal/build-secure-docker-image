@@ -52,8 +52,8 @@ runs:
           echo "Using custom build command: ${{ inputs.docker-build-command }}"
           eval "${{ inputs.docker-build-command }}"
         else
-          echo "Running: docker build -f '${{ inputs.dockerfile }}' -t '${{ inputs.tag }}' '${{ inputs.path }}'"
-          docker build -f "${{ inputs.dockerfile }}" -t "${{ inputs.tag }}" "${{ inputs.path }}"
+          echo "Running: docker buildx build --load -f '${{ inputs.dockerfile }}' -t '${{ inputs.tag }}' '${{ inputs.path }}'"
+          docker buildx build --load -f "${{ inputs.dockerfile }}" -t "${{ inputs.tag }}" "${{ inputs.path }}"
         fi
         echo "::endgroup::"
 
@@ -93,7 +93,7 @@ runs:
         echo "::endgroup::"
 
         echo "::group::Extracting Dockle"
-        tar zxf /tmp/dockle.tar.gz -C /tmp || { echo "❌ Extraction failed"; exit 1; }
+        tar zxf /tmp/dockle.tar.gz -C /tmp || { echo "Extraction failed"; exit 1; }
         sudo mv /tmp/dockle /usr/local/bin/
         dockle --version || echo "Dockle not installed correctly"
         echo "::endgroup::"

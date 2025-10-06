@@ -9,7 +9,7 @@ Ensure your container images follow recommended security guidelines before deplo
 
 ## Features
 
-* Build a Docker image using a custom or default `docker build` command.
+* Build a Docker image using a custom or default `docker buildx build` command.
 * Automatically fetch and install the latest **Dockle** release (or a specified version).
 * Scan images for **INFO / WARN / FATAL** security issues.
 * Fail the workflow if security issues are detected (configurable).
@@ -51,7 +51,7 @@ jobs:
 | `tag`                  | Docker image name and tag in `name:tag` format                   | ✅ Yes    | –                                              |
 | `path`                 | Directory where the Docker build command should run              | ❌ No     | `.`                                            |
 | `dockerfile`           | Path to the Dockerfile relative to the `path` input              | ❌ No     | `Dockerfile`                                   |
-| `docker-build-command` | Custom Docker build command (overrides default)                  | ❌ No     | `docker build -f <dockerfile> -t <tag> <path>` |
+| `docker-build-command` | Custom Docker build command (overrides default)                  | ❌ No     | `docker buildx build -f <dockerfile> -t <tag> <path>` |
 | `dockle-version`       | Dockle version to use (defaults to latest release)               | ❌ No     | `latest`                                       |
 | `dockle-exit-code`     | Exit code returned by Dockle when WARN or FATAL issues are found | ❌ No     | `1`                                            |
 | `dockle-exit-level`    | Dockle exit threshold: `INFO`, `WARN`, or `FATAL`                | ❌ No     | `WARN`                                         |
